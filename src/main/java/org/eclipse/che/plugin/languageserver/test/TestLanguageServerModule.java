@@ -10,12 +10,13 @@
  *******************************************************************************/
 package org.eclipse.che.plugin.languageserver.test;
 
+import org.eclipse.che.api.languageserver.launcher.LanguageServerLauncher;
 import org.eclipse.che.inject.DynaModule;
-import org.eclipse.che.plugin.languageserver.server.launcher.LanguageServerLauncher;
 import org.eclipse.che.plugin.languageserver.test.server.launcher.TestLanguageServerLauncher;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.multibindings.Multibinder;
+
 
 
 /**
@@ -28,6 +29,5 @@ public class TestLanguageServerModule extends AbstractModule {
 	protected void configure() {
 		Multibinder.newSetBinder(binder(), LanguageServerLauncher.class).addBinding()
 				.to(TestLanguageServerLauncher.class);
-		bind(MyService.class); 
 	}
 }

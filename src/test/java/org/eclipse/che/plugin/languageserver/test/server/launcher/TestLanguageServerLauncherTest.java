@@ -15,21 +15,23 @@ import java.io.IOException;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Testing the {@link TestLanguageServerLauncher}.
  */
 public class TestLanguageServerLauncherTest {
 
+	/** The usual Logger.*/
+	private static final Logger LOGGER = LoggerFactory.getLogger(TestLanguageServerLauncherTest.class);
+	
 	@Test
 	public void shouldFindJarFile() throws IOException {
 		// given
-		final String baseDir = System.getProperty("LIBS_BASE_DIR");
-		Assert.assertNotNull("Failed to LIBS_BASE_DIR system property", baseDir);
-		final String pathPattern = System.getProperty("PATH_PATTERN");
-		Assert.assertNotNull("Failed to PATH_PATTERN system property", pathPattern);
+		final String baseDir = System.getProperty("user.dir") + File.separator + "test-lang-server-lib";
 		// when
-		final File jarfile = TestLanguageServerLauncher.findJarFile(baseDir, pathPattern);
+		final File jarfile = TestLanguageServerLauncher.findJarFile(baseDir, TestLanguageServerLauncher.LSP_LIB_NAME_PATTERN);
 		// then
 		Assert.assertNotNull("Failed to locate jar file", jarfile);
 	}

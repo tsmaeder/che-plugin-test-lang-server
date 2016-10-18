@@ -1,0 +1,13 @@
+Manifest-Version: 1.0
+Built-By: xcoulon
+Class-Path: org.jboss.tools.language-server.ipc.jnr-unixsocket-1.0.0-S
+ NAPSHOT.jar org.jboss.tools.language-server.messages-1.0.0-SNAPSHOT.j
+ ar gson-2.3.1.jar slf4j-api-1.7.6.jar jnr-unixsocket-0.5.jar jnr-ffi-
+ 2.0.1.jar jffi-1.2.7.jar jffi-1.2.7-native.jar asm-5.0.3.jar asm-comm
+ ons-5.0.3.jar asm-analysis-5.0.3.jar asm-tree-5.0.3.jar asm-util-5.0.
+ 3.jar jnr-x86asm-1.0.2.jar jnr-constants-0.8.6.jar jnr-enxio-0.6.jar 
+ jnr-posix-3.0.9.jar slf4j-log4j12-1.7.6.jar log4j-1.2.17.jar
+Created-By: Apache Maven 3.3.3
+Build-Jdk: 1.8.0_101
+Main-Class: org.jboss.tools.lsp.testlang.TestLanguageServer
+
