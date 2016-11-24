@@ -83,7 +83,7 @@ public class TestLanguageServerLauncher extends LanguageServerLauncherTemplate {
 	 * Default constructor.
 	 */
 	public TestLanguageServerLauncher() {
-		this.libsPath = "/home/user/che/ws-agent/webapps/wsagent/WEB-INF/lib/";
+		this.libsPath = "/home/user/che/ws-agent/webapps/ROOT/WEB-INF/lib/";
 	}
 
 	/**
