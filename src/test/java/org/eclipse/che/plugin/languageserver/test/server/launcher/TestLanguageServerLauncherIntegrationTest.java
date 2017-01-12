@@ -14,10 +14,17 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.eclipse.che.api.languageserver.exception.LanguageServerException;
 import org.junit.Test;
 
+import io.typefox.lsapi.InitializeResult;
+import io.typefox.lsapi.builders.InitializeParamsBuilder;
+import io.typefox.lsapi.impl.ClientCapabilitiesImpl;
 import io.typefox.lsapi.services.LanguageServer;
 
 /**
@@ -28,9 +35,7 @@ public class TestLanguageServerLauncherIntegrationTest {
 	@Test
 	public void shouldLaunchLanguageServer() throws LanguageServerException {
 		// given a test lang server launcher
-		final String libsPath = System.getProperty("user.dir") + File.separator + "test-lang-server-lib";
-		assertTrue(new File(libsPath).exists());
-		final TestLanguageServerLauncher testLanguageServerLauncher = new TestLanguageServerLauncher(libsPath);
+		final TestLanguageServerLauncher testLanguageServerLauncher = new TestLanguageServerLauncher();
 		assertTrue(testLanguageServerLauncher.isAbleToLaunch());
 		// when
 		final LanguageServer testLangServerProcess = testLanguageServerLauncher
@@ -38,6 +43,26 @@ public class TestLanguageServerLauncherIntegrationTest {
 		// then
 		assertNotNull(testLangServerProcess);
 		testLangServerProcess.exit();
+
+	}
+
+	@Test
+	public void shouldReplyToInitialize() throws LanguageServerException, InterruptedException, ExecutionException, TimeoutException {
+		// given a test lang server launcher
+		final TestLanguageServerLauncher testLanguageServerLauncher = new TestLanguageServerLauncher();
+		assertTrue(testLanguageServerLauncher.isAbleToLaunch());
+		// when
+		final LanguageServer testLangServerProcess = testLanguageServerLauncher
+				.launch(System.getProperty("java.tmp.io"));
+		// then
+		assertNotNull(testLangServerProcess);
 		
+		System.out.println("calling initialize");
+		CompletableFuture<InitializeResult> initialized = testLangServerProcess.initialize(new InitializeParamsBuilder()
+				.capabilities(new ClientCapabilitiesImpl()).clientName("boofl").rootPath("/tmp").build());
+		initialized.get(30, TimeUnit.SECONDS);
+
+		testLangServerProcess.exit();
+
 	}
 }

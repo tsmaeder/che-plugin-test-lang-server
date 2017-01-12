@@ -12,6 +12,7 @@ package org.eclipse.che.plugin.languageserver.test.server.launcher;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URISyntaxException;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -27,11 +28,11 @@ public class TestLanguageServerLauncherTest {
 	private static final Logger LOGGER = LoggerFactory.getLogger(TestLanguageServerLauncherTest.class);
 	
 	@Test
-	public void shouldFindJarFile() throws IOException {
+	public void shouldFindJarFile() throws IOException, URISyntaxException {
 		// given
 		final String baseDir = System.getProperty("user.dir") + File.separator + "test-lang-server-lib";
 		// when
-		final File jarfile = TestLanguageServerLauncher.findJarFile(baseDir, TestLanguageServerLauncher.LSP_LIB_NAME_PATTERN);
+		final File jarfile = TestLanguageServerLauncher.findJarFile();
 		// then
 		Assert.assertNotNull("Failed to locate jar file", jarfile);
 	}

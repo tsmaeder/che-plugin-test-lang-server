@@ -15,13 +15,19 @@ import static java.util.Arrays.asList;
 import java.io.File;
 import java.io.IOException;
 import java.lang.ProcessBuilder.Redirect;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.channels.Channels;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
+import java.nio.file.CopyOption;
+import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.text.MessageFormat;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -39,6 +45,7 @@ import org.eclipse.che.api.languageserver.exception.LanguageServerException;
 import org.eclipse.che.api.languageserver.launcher.LanguageServerLauncherTemplate;
 import org.eclipse.che.api.languageserver.shared.model.LanguageDescription;
 import org.eclipse.che.api.languageserver.shared.model.impl.LanguageDescriptionImpl;
+import org.eclipse.che.api.project.shared.dto.CopyOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,9 +64,7 @@ public class TestLanguageServerLauncher extends LanguageServerLauncherTemplate {
 	private final static Logger LOGGER = LoggerFactory.getLogger(TestLanguageServerLauncher.class);
 	private final static String JAVA_EXEC = System.getProperty("java.home") + "/bin/java";
 
-	private final String libsPath;
-
-	public static final String LSP_LIB_NAME_PATTERN = "glob:org.jboss.tools.language-server.test-lang.server*.jar";
+	private static File launcherJar;
 
 	private static final String LANGUAGE_ID = "test";
 	private static final String[] EXTENSIONS = new String[] { "test" };
@@ -83,18 +88,6 @@ public class TestLanguageServerLauncher extends LanguageServerLauncherTemplate {
 	 * Default constructor.
 	 */
 	public TestLanguageServerLauncher() {
-		this.libsPath = "/home/user/che/ws-agent/webapps/ROOT/WEB-INF/lib/";
-	}
-
-	/**
-	 * Custom constructor.
-	 * 
-	 * @param libsPath
-	 *            the path to the directory containing all libs to run the
-	 *            'test-lang' server
-	 */
-	public TestLanguageServerLauncher(final String libsPath) {
-		this.libsPath = libsPath;
 	}
 
 	@Override
@@ -105,7 +98,7 @@ public class TestLanguageServerLauncher extends LanguageServerLauncherTemplate {
 	@Override
 	public boolean isAbleToLaunch() {
 		try {
-			final File testLanguageServerJarFile = findJarFile(libsPath, LSP_LIB_NAME_PATTERN);
+			final File testLanguageServerJarFile = findJarFile();
 			return testLanguageServerJarFile.exists();
 		} catch (IOException e) {
 			throw new IllegalStateException("Can't check if 'test' language server can start", e);
@@ -130,17 +123,17 @@ public class TestLanguageServerLauncher extends LanguageServerLauncherTemplate {
 				return getSocketChannel(this.serverSocketOutChannel);
 			});
 			// locates language server jar file
-			final File testLanguageServerJarFile = findJarFile(libsPath, LSP_LIB_NAME_PATTERN);
+			final File testLanguageServerJarFile = findJarFile();
 			// starts the Java process
 			final ProcessBuilder processBuilder = new ProcessBuilder(JAVA_EXEC,
-					"-DSTDIN_PIPE_NAME=" + socketInFile.getAbsolutePath(),
-					"-DSTDOUT_PIPE_NAME=" + socketOutFile.getAbsolutePath(), "-jar",
+					"-DSTDIN_PIPE_NAME=" + socketOutFile.getAbsolutePath(),
+					"-DSTDOUT_PIPE_NAME=" + socketInFile.getAbsolutePath(), "-jar",
 					testLanguageServerJarFile.toString(),
 					"-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=1044", "debug");
 			// specify the working directory to load classes from the other jar
 			// files
-			LOGGER.debug("Launching 'test-lang' server with command line:\n{}", processBuilder.command().stream().collect(Collectors.joining(" ")));
-			processBuilder.directory(new File(libsPath));
+			LOGGER.info("Launching 'test-lang' server with command line:\n{}",
+					processBuilder.command().stream().collect(Collectors.joining(" ")));
 			processBuilder.redirectError(Redirect.INHERIT);
 			processBuilder.redirectOutput(Redirect.INHERIT);
 			final Process process = processBuilder.start();
@@ -149,10 +142,9 @@ public class TestLanguageServerLauncher extends LanguageServerLauncherTemplate {
 			}
 			// now, wait for the process to connect to the sockets
 			this.socketInChannel = socketInChannelFuture.get(30, TimeUnit.SECONDS);
-			LOGGER.debug("New connection established on the 'IN' channel: {}",
-					socketInChannel.getRemoteSocketAddress());
+			LOGGER.info("New connection established on the 'IN' channel: {}", socketInChannel.getRemoteSocketAddress());
 			this.socketOutChannel = socketOutChannelFuture.get(30, TimeUnit.SECONDS);
-			LOGGER.debug("New connection established on the 'OUT' channel: {}",
+			LOGGER.info("New connection established on the 'OUT' channel: {}",
 					socketOutChannel.getRemoteSocketAddress());
 			LOGGER.info("'test-lang' server process started and connected to sockets.");
 			return process;
@@ -216,22 +208,20 @@ public class TestLanguageServerLauncher extends LanguageServerLauncherTemplate {
 	 * @return the first matching file
 	 * @throws IOException
 	 *             if something went wrong while searching
+	 * @throws URISyntaxException
 	 * @throws IllegalStateException
 	 *             if no matching file was found
 	 */
-	public static File findJarFile(final String baseDir, final String pathPattern) throws IOException {
-		final PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher(pathPattern);
-		LOGGER.info("Looking for file matching {} in {}", pathPattern, baseDir);
-		final Optional<File> matchFile = Files.find(Paths.get(baseDir), 1, (path,
-				basicFileAttributes) -> basicFileAttributes.isRegularFile() && pathMatcher.matches(path.getFileName()))
-				.map(path -> path.toFile()).findFirst();
-		if (!matchFile.isPresent()) {
-			throw new IllegalStateException(
-					MessageFormat.format("Failed to locate jar matching ''{0}'' in ''{1}''", pathPattern, baseDir));
+	public static File findJarFile() throws IOException {
+		if (launcherJar == null) {
+			Path tmpFile = Files.createTempFile("launcher", ".jar");
+			URL jarUrl = TestLanguageServerLauncher.class.getClassLoader().getResource("testls.jar");
+			Files.copy(jarUrl.openStream(), tmpFile, StandardCopyOption.REPLACE_EXISTING);
+			launcherJar= tmpFile.toFile();
+			launcherJar.deleteOnExit();
 		}
-		final File testLanguageServerJarFile = matchFile.get();
-		LOGGER.info("Found jar {} for 'test' language support", testLanguageServerJarFile.getAbsolutePath());
-		return testLanguageServerJarFile;
+		return launcherJar;
+
 	}
 
 	@Override
