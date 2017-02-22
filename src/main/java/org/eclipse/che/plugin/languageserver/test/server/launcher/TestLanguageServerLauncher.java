@@ -20,18 +20,11 @@ import java.net.URL;
 import java.nio.channels.Channels;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
-import java.nio.file.CopyOption;
-import java.nio.file.FileSystemNotFoundException;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.PathMatcher;
-import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.text.MessageFormat;
 import java.util.Arrays;
 import java.util.Iterator;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -44,13 +37,14 @@ import java.util.stream.Collectors;
 import org.eclipse.che.api.languageserver.exception.LanguageServerException;
 import org.eclipse.che.api.languageserver.launcher.LanguageServerLauncherTemplate;
 import org.eclipse.che.api.languageserver.shared.model.LanguageDescription;
-import org.eclipse.che.api.languageserver.shared.model.impl.LanguageDescriptionImpl;
-import org.eclipse.che.api.project.shared.dto.CopyOptions;
+import org.eclipse.lsp4j.jsonrpc.Launcher;
+import org.eclipse.lsp4j.services.LanguageClient;
+import org.eclipse.lsp4j.services.LanguageServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.typefox.lsapi.services.LanguageServer;
-import io.typefox.lsapi.services.json.JsonBasedLanguageServer;
+import com.google.inject.Singleton;
+
 import jnr.enxio.channels.NativeSelectorProvider;
 import jnr.unixsocket.UnixServerSocketChannel;
 import jnr.unixsocket.UnixSocketAddress;
@@ -59,6 +53,7 @@ import jnr.unixsocket.UnixSocketChannel;
 /**
  * 
  */
+@Singleton
 public class TestLanguageServerLauncher extends LanguageServerLauncherTemplate {
 
 	private final static Logger LOGGER = LoggerFactory.getLogger(TestLanguageServerLauncher.class);
@@ -70,10 +65,10 @@ public class TestLanguageServerLauncher extends LanguageServerLauncherTemplate {
 	private static final String[] EXTENSIONS = new String[] { "test" };
 	private static final String[] MIME_TYPES = new String[] { "text/x-test" };
 
-	private static final LanguageDescriptionImpl description;
+	private static final LanguageDescription description;
 
-	static {
-		description = new LanguageDescriptionImpl();
+	static { 
+		description = new LanguageDescription();
 		description.setFileExtensions(asList(EXTENSIONS));
 		description.setLanguageId(LANGUAGE_ID);
 		description.setMimeTypes(Arrays.asList(MIME_TYPES));
@@ -83,7 +78,7 @@ public class TestLanguageServerLauncher extends LanguageServerLauncherTemplate {
 	private UnixServerSocketChannel serverSocketOutChannel;
 	private UnixSocketChannel socketInChannel;
 	private UnixSocketChannel socketOutChannel;
-
+ 
 	/**
 	 * Default constructor.
 	 */
@@ -110,7 +105,7 @@ public class TestLanguageServerLauncher extends LanguageServerLauncherTemplate {
 		LOGGER.warn("Starting the 'Test' Language Server Process...");
 		try {
 			// creates Unix sockets and set system properties so the 'test lang'
-			// server can look-up the Unix socket location
+			// server can look-up the Unix socket location 
 			final File socketInFile = getSocketFile("che-testlang-in.sock");
 			this.serverSocketInChannel = createServerSocketChannel(socketInFile);
 			final File socketOutFile = getSocketFile("che-testlang-out.sock");
@@ -225,11 +220,9 @@ public class TestLanguageServerLauncher extends LanguageServerLauncherTemplate {
 	}
 
 	@Override
-	protected LanguageServer connectToLanguageServer(final Process languageServerProcess) {
-		final JsonBasedLanguageServer languageServer = new JsonBasedLanguageServer();
-		languageServer.connect(Channels.newInputStream(this.socketInChannel),
-				Channels.newOutputStream(this.socketOutChannel));
-		return languageServer;
+	protected LanguageServer connectToLanguageServer(final Process languageServerProcess, LanguageClient client) {
+		Launcher<LanguageServer> launcher = Launcher.createLauncher(client, LanguageServer.class, Channels.newInputStream(this.socketInChannel), Channels.newOutputStream(this.socketOutChannel));
+		launcher.startListening();
+		return launcher.getRemoteProxy();
 	}
-
 }

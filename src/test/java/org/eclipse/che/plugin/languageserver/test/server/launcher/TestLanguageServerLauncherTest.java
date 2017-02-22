@@ -16,21 +16,16 @@ import java.net.URISyntaxException;
 
 import org.junit.Assert;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Testing the {@link TestLanguageServerLauncher}.
  */
 public class TestLanguageServerLauncherTest {
 
-	/** The usual Logger.*/
-	private static final Logger LOGGER = LoggerFactory.getLogger(TestLanguageServerLauncherTest.class);
 	
 	@Test
 	public void shouldFindJarFile() throws IOException, URISyntaxException {
 		// given
-		final String baseDir = System.getProperty("user.dir") + File.separator + "test-lang-server-lib";
 		// when
 		final File jarfile = TestLanguageServerLauncher.findJarFile();
 		// then
