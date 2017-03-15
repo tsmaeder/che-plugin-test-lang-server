@@ -10,7 +10,20 @@
  *******************************************************************************/
 package org.eclipse.che.plugin.languageserver.test.server.launcher;
 
-import static java.util.Arrays.asList;
+import com.google.inject.Singleton;
+import io.typefox.lsapi.services.LanguageServer;
+import io.typefox.lsapi.services.json.JsonBasedLanguageServer;
+import jnr.enxio.channels.NativeSelectorProvider;
+import jnr.unixsocket.UnixServerSocketChannel;
+import jnr.unixsocket.UnixSocketAddress;
+import jnr.unixsocket.UnixSocketChannel;
+import org.eclipse.che.api.languageserver.exception.LanguageServerException;
+import org.eclipse.che.api.languageserver.launcher.LanguageServerLauncherTemplate;
+import org.eclipse.che.api.languageserver.server.dto.DtoServerImpls.LanguageDescriptionDTOImpl;
+import org.eclipse.che.api.languageserver.shared.lsapi.LanguageDescriptionDTO;
+import org.eclipse.che.api.languageserver.shared.model.LanguageDescription;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -34,22 +47,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
-import org.eclipse.che.api.languageserver.exception.LanguageServerException;
-import org.eclipse.che.api.languageserver.launcher.LanguageServerLauncherTemplate;
-import org.eclipse.che.api.languageserver.shared.model.LanguageDescription;
-import org.eclipse.lsp4j.jsonrpc.Launcher;
-import org.eclipse.lsp4j.services.LanguageClient;
-import org.eclipse.lsp4j.services.LanguageServer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.google.inject.Singleton;
-
-import jnr.enxio.channels.NativeSelectorProvider;
-import jnr.unixsocket.UnixServerSocketChannel;
-import jnr.unixsocket.UnixSocketAddress;
-import jnr.unixsocket.UnixSocketChannel;
-
+import static java.util.Arrays.asList;
+ 
 /**
  * 
  */
@@ -65,10 +64,10 @@ public class TestLanguageServerLauncher extends LanguageServerLauncherTemplate {
 	private static final String[] EXTENSIONS = new String[] { "test" };
 	private static final String[] MIME_TYPES = new String[] { "text/x-test" };
 
-	private static final LanguageDescription description;
+	private static final LanguageDescriptionDTO description;
 
-	static { 
-		description = new LanguageDescription();
+	static {  
+		description = new LanguageDescriptionDTOImpl();
 		description.setFileExtensions(asList(EXTENSIONS));
 		description.setLanguageId(LANGUAGE_ID);
 		description.setMimeTypes(Arrays.asList(MIME_TYPES));
@@ -78,13 +77,14 @@ public class TestLanguageServerLauncher extends LanguageServerLauncherTemplate {
 	private UnixServerSocketChannel serverSocketOutChannel;
 	private UnixSocketChannel socketInChannel;
 	private UnixSocketChannel socketOutChannel;
+    private Process process;
  
 	/**
 	 * Default constructor.
 	 */
 	public TestLanguageServerLauncher() {
 	}
-
+	
 	@Override
 	public LanguageDescription getLanguageDescription() {
 		return description;
@@ -99,6 +99,10 @@ public class TestLanguageServerLauncher extends LanguageServerLauncherTemplate {
 			throw new IllegalStateException("Can't check if 'test' language server can start", e);
 		}
 	}
+	
+	public Process getProcess() {
+        return process;
+    }
 
 	@Override
 	protected Process startLanguageServerProcess(String projectPath) throws LanguageServerException {
@@ -121,17 +125,18 @@ public class TestLanguageServerLauncher extends LanguageServerLauncherTemplate {
 			final File testLanguageServerJarFile = findJarFile();
 			// starts the Java process
 			final ProcessBuilder processBuilder = new ProcessBuilder(JAVA_EXEC,
+			        "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=1044",
 					"-DSTDIN_PIPE_NAME=" + socketOutFile.getAbsolutePath(),
 					"-DSTDOUT_PIPE_NAME=" + socketInFile.getAbsolutePath(), "-jar",
 					testLanguageServerJarFile.toString(),
-					"-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=1044", "debug");
+					 "debug");
 			// specify the working directory to load classes from the other jar
 			// files
 			LOGGER.info("Launching 'test-lang' server with command line:\n{}",
 					processBuilder.command().stream().collect(Collectors.joining(" ")));
 			processBuilder.redirectError(Redirect.INHERIT);
 			processBuilder.redirectOutput(Redirect.INHERIT);
-			final Process process = processBuilder.start();
+			this.process = processBuilder.start();
 			if (!process.isAlive()) {
 				LOGGER.error("Couldn't start process : " + processBuilder.command());
 			}
@@ -220,9 +225,9 @@ public class TestLanguageServerLauncher extends LanguageServerLauncherTemplate {
 	}
 
 	@Override
-	protected LanguageServer connectToLanguageServer(final Process languageServerProcess, LanguageClient client) {
-		Launcher<LanguageServer> launcher = Launcher.createLauncher(client, LanguageServer.class, Channels.newInputStream(this.socketInChannel), Channels.newOutputStream(this.socketOutChannel));
-		launcher.startListening();
-		return launcher.getRemoteProxy();
+	protected LanguageServer connectToLanguageServer(final Process languageServerProcess) {
+        JsonBasedLanguageServer languageServer = new JsonBasedLanguageServer();
+        languageServer.connect(Channels.newInputStream(this.socketInChannel), Channels.newOutputStream(this.socketOutChannel));
+        return languageServer;
 	}
 }
