@@ -10,8 +10,21 @@
  *******************************************************************************/
 package org.eclipse.che.plugin.languageserver.test.server.launcher;
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import com.google.common.io.Files;
+import org.eclipse.che.api.languageserver.exception.LanguageServerException;
+import org.eclipse.lsp4j.ClientCapabilities;
+import org.eclipse.lsp4j.DidSaveTextDocumentParams;
+import org.eclipse.lsp4j.InitializeParams;
+import org.eclipse.lsp4j.InitializeResult;
+import org.eclipse.lsp4j.MessageParams;
+import org.eclipse.lsp4j.PublishDiagnosticsParams;
+import org.eclipse.lsp4j.ShowMessageRequestParams;
+import org.eclipse.lsp4j.TextDocumentIdentifier;
+import org.eclipse.lsp4j.services.LanguageClient;
+import org.eclipse.lsp4j.services.LanguageServer;
+import org.junit.Test;
+import org.mockito.Matchers;
+import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
@@ -21,26 +34,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import org.apache.lucene.analysis.Analyzer.ReuseStrategy;
-import org.eclipse.che.api.languageserver.exception.LanguageServerException;
-import org.eclipse.lsp4j.ClientCapabilities;
-import org.eclipse.lsp4j.DidSaveTextDocumentParams;
-import org.eclipse.lsp4j.InitializeParams;
-import org.eclipse.lsp4j.InitializeResult;
-import org.eclipse.lsp4j.MessageActionItem;
-import org.eclipse.lsp4j.MessageParams;
-import org.eclipse.lsp4j.MessageType;
-import org.eclipse.lsp4j.PublishDiagnosticsParams;
-import org.eclipse.lsp4j.ShowMessageRequestParams;
-import org.eclipse.lsp4j.TextDocumentIdentifier;
-import org.eclipse.lsp4j.services.LanguageClient;
-import org.eclipse.lsp4j.services.LanguageServer;
-import org.junit.Test;
-import org.mockito.Matchers;
-import org.mockito.Mock;
-import org.mockito.Mockito;
-
-import com.google.common.io.Files;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Testing the {@link TestLanguageServerLauncher}.
@@ -62,7 +57,7 @@ public class TestLanguageServerLauncherIntegrationTest {
 					}
 					
 					@Override
-					public CompletableFuture<MessageActionItem> showMessageRequest(ShowMessageRequestParams requestParams) {
+					public CompletableFuture<Void> showMessageRequest(ShowMessageRequestParams requestParams) {
 						return null;
 					}
 					
@@ -101,7 +96,7 @@ public class TestLanguageServerLauncherIntegrationTest {
 					}
 					
 					@Override
-					public CompletableFuture<MessageActionItem> showMessageRequest(ShowMessageRequestParams requestParams) {
+					public CompletableFuture<Void> showMessageRequest(ShowMessageRequestParams requestParams) {
 						return null;
 					}
 					
@@ -123,7 +118,7 @@ public class TestLanguageServerLauncherIntegrationTest {
 		System.out.println("calling initialize");
 		InitializeParams initializeParams = new InitializeParams();
 		initializeParams.setCapabilities(new ClientCapabilities());
-		initializeParams.setRootUri("file:///tmp");
+		initializeParams.setRootPath("file:///tmp");
 		CompletableFuture<InitializeResult> initialized = testLangServerProcess.initialize(initializeParams);
 		initialized.get(30, TimeUnit.SECONDS);
 
@@ -139,7 +134,7 @@ public class TestLanguageServerLauncherIntegrationTest {
 		File dir = Files.createTempDir();
 		File file = File.createTempFile("smr", "", dir);
 		LanguageClient client = Mockito.mock(LanguageClient.class);
-		Mockito.when(client.showMessageRequest(Mockito.any())).thenReturn(CompletableFuture.completedFuture(new MessageActionItem("foobar")));
+		Mockito.when(client.showMessageRequest(Mockito.any())).thenReturn(CompletableFuture.completedFuture(null));
 		
 		// when
 		final LanguageServer testLangServer= testLanguageServerLauncher
@@ -148,7 +143,7 @@ public class TestLanguageServerLauncherIntegrationTest {
 		assertNotNull(testLangServer);
 		
 		Files.append("window/showMessageRequest:Error:Apply:the message\n", file, Charset.forName("utf-8"));
-		testLangServer.getTextDocumentService().didSave(new DidSaveTextDocumentParams(new TextDocumentIdentifier(file.toURI().toString()), "window/showMessageRequest:Error:Command: a message"));
+		testLangServer.getTextDocumentService().didSave(new DidSaveTextDocumentParams(new TextDocumentIdentifier(file.toURI().toString())));
 		Mockito.verify(client, Mockito.timeout(5000)).showMessageRequest(Matchers.any());
 	}
 }

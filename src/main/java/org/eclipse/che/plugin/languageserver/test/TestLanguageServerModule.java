@@ -10,14 +10,13 @@
  *******************************************************************************/
 package org.eclipse.che.plugin.languageserver.test;
 
+import com.google.inject.AbstractModule;
+import com.google.inject.multibindings.Multibinder;
 import org.eclipse.che.api.languageserver.launcher.LanguageServerLauncher;
 import org.eclipse.che.inject.DynaModule;
 import org.eclipse.che.plugin.languageserver.test.server.launcher.TestLanguageServerLauncher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.google.inject.AbstractModule;
-import com.google.inject.multibindings.Multibinder;
 
 
 
