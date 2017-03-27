@@ -10,6 +10,7 @@
  *******************************************************************************/
 package org.eclipse.che.plugin.languageserver.test.server.launcher;
 
+import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import io.typefox.lsapi.services.LanguageServer;
 import io.typefox.lsapi.services.json.JsonBasedLanguageServer;
@@ -19,9 +20,9 @@ import jnr.unixsocket.UnixSocketAddress;
 import jnr.unixsocket.UnixSocketChannel;
 import org.eclipse.che.api.languageserver.exception.LanguageServerException;
 import org.eclipse.che.api.languageserver.launcher.LanguageServerLauncherTemplate;
-import org.eclipse.che.api.languageserver.server.dto.DtoServerImpls.LanguageDescriptionDTOImpl;
-import org.eclipse.che.api.languageserver.shared.lsapi.LanguageDescriptionDTO;
-import org.eclipse.che.api.languageserver.shared.model.LanguageDescription;
+import org.eclipse.che.api.languageserver.shared.model.LanguageServerDescription;
+import org.eclipse.che.api.languageserver.shared.model.impl.DocumentFilterImpl;
+import org.eclipse.che.api.languageserver.shared.model.impl.LanguageServerDescriptionImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,8 +47,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
-
-import static java.util.Arrays.asList;
  
 /**
  * 
@@ -59,19 +58,11 @@ public class TestLanguageServerLauncher extends LanguageServerLauncherTemplate {
 	private final static String JAVA_EXEC = System.getProperty("java.home") + "/bin/java";
 
 	private static File launcherJar;
+ 
+	//private static final String REGEX= ".*\\.test";
+    private static final String REGEX= ".*";
 
-	private static final String LANGUAGE_ID = "test";
-	private static final String[] EXTENSIONS = new String[] { "test" };
-	private static final String[] MIME_TYPES = new String[] { "text/x-test" };
-
-	private static final LanguageDescriptionDTO description;
-
-	static {  
-		description = new LanguageDescriptionDTOImpl();
-		description.setFileExtensions(asList(EXTENSIONS));
-		description.setLanguageId(LANGUAGE_ID);
-		description.setMimeTypes(Arrays.asList(MIME_TYPES));
-	}
+	private static final LanguageServerDescription description= createServerDescription();
 
 	private UnixServerSocketChannel serverSocketInChannel;
 	private UnixServerSocketChannel serverSocketOutChannel;
@@ -79,14 +70,12 @@ public class TestLanguageServerLauncher extends LanguageServerLauncherTemplate {
 	private UnixSocketChannel socketOutChannel;
     private Process process;
  
-	/**
-	 * Default constructor.
-	 */
-	public TestLanguageServerLauncher() {
+    @Inject
+    public TestLanguageServerLauncher() {
 	}
-	
+    
 	@Override
-	public LanguageDescription getLanguageDescription() {
+	public LanguageServerDescription getDescription() {
 		return description;
 	}
 
@@ -230,4 +219,11 @@ public class TestLanguageServerLauncher extends LanguageServerLauncherTemplate {
         languageServer.connect(Channels.newInputStream(this.socketInChannel), Channels.newOutputStream(this.socketOutChannel));
         return languageServer;
 	}
+	
+    private static LanguageServerDescription createServerDescription() {
+        LanguageServerDescriptionImpl description = new LanguageServerDescriptionImpl("org.eclipse.che.plugin.languageserver.test", null,
+                        Arrays.asList(new DocumentFilterImpl(TestLanguage.LANGUAGE_ID, REGEX, null)));
+        return description;
+    }
+
 }
