@@ -10,13 +10,27 @@
  *******************************************************************************/
 package org.eclipse.che.plugin.languageserver.test.server.launcher;
 
-import io.typefox.lsapi.InitializeResult;
-import io.typefox.lsapi.impl.ClientCapabilitiesImpl;
-import io.typefox.lsapi.impl.InitializeParamsImpl;
-import io.typefox.lsapi.services.LanguageServer;
+import com.google.common.io.Files;
 import org.eclipse.che.api.languageserver.exception.LanguageServerException;
+import org.eclipse.lsp4j.ClientCapabilities;
+import org.eclipse.lsp4j.DidOpenTextDocumentParams;
+import org.eclipse.lsp4j.DidSaveTextDocumentParams;
+import org.eclipse.lsp4j.InitializeParams;
+import org.eclipse.lsp4j.InitializeResult;
+import org.eclipse.lsp4j.MessageParams;
+import org.eclipse.lsp4j.PublishDiagnosticsParams;
+import org.eclipse.lsp4j.ShowMessageRequestParams;
+import org.eclipse.lsp4j.TextDocumentIdentifier;
+import org.eclipse.lsp4j.TextDocumentItem;
+import org.eclipse.lsp4j.services.LanguageClient;
+import org.eclipse.lsp4j.services.LanguageServer;
 import org.junit.Test;
+import org.mockito.Matchers;
+import org.mockito.Mockito;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -31,18 +45,43 @@ import static org.junit.Assert.assertTrue;
 public class TestLanguageServerLauncherIntegrationTest {
 
     @Test
-    public void shouldLaunchLanguageServer() throws LanguageServerException, InterruptedException {
+    public void shouldLaunchLanguageServer() throws LanguageServerException {
         // given a test lang server launcher
         final TestLanguageServerLauncher testLanguageServerLauncher = new TestLanguageServerLauncher();
         assertTrue(testLanguageServerLauncher.isAbleToLaunch());
         // when
-        final LanguageServer testLangServerProcess = testLanguageServerLauncher.launch(System.getProperty("java.tmp.io"));
+        final LanguageServer testLangServerProcess = testLanguageServerLauncher.launch(System.getProperty("java.tmp.io"),
+                                                                                       new LanguageClient() {
+
+                                                                                           @Override
+                                                                                           public void telemetryEvent(Object object) {
+
+                                                                                           }
+
+                                                                                           @Override
+                                                                                           public CompletableFuture<Void> showMessageRequest(ShowMessageRequestParams requestParams) {
+                                                                                               return null;
+                                                                                           }
+
+                                                                                           @Override
+                                                                                           public void showMessage(MessageParams messageParams) {
+
+                                                                                           }
+
+                                                                                           @Override
+                                                                                           public void publishDiagnostics(PublishDiagnosticsParams diagnostics) {
+
+                                                                                           }
+
+                                                                                           @Override
+                                                                                           public void logMessage(MessageParams message) {
+                                                                                           }
+                                                                                       });
         try {
             // then
             assertNotNull(testLangServerProcess);
         } finally {
             testLangServerProcess.exit();
-            testLanguageServerLauncher.getProcess().waitFor();
         }
 
     }
@@ -53,23 +92,73 @@ public class TestLanguageServerLauncherIntegrationTest {
         final TestLanguageServerLauncher testLanguageServerLauncher = new TestLanguageServerLauncher();
         assertTrue(testLanguageServerLauncher.isAbleToLaunch());
         // when
-        final LanguageServer testLangServerProcess = testLanguageServerLauncher.launch(System.getProperty("java.tmp.io"));
-        try {
-            // then
+        final LanguageServer testLangServerProcess = testLanguageServerLauncher.launch(System.getProperty("java.tmp.io"),
+                                                                                       new LanguageClient() {
 
+                                                                                           @Override
+                                                                                           public void telemetryEvent(Object object) {
+
+                                                                                           }
+
+                                                                                           @Override
+                                                                                           public CompletableFuture<Void> showMessageRequest(ShowMessageRequestParams requestParams) {
+                                                                                               return null;
+                                                                                           }
+
+                                                                                           @Override
+                                                                                           public void showMessage(MessageParams messageParams) {
+                                                                                           }
+
+                                                                                           @Override
+                                                                                           public void publishDiagnostics(PublishDiagnosticsParams diagnostics) {
+                                                                                           }
+
+                                                                                           @Override
+                                                                                           public void logMessage(MessageParams message) {
+                                                                                           }
+
+                                                                                       });
+        try {
             // then
             assertNotNull(testLangServerProcess);
 
             System.out.println("calling initialize");
-            InitializeParamsImpl initializeParams = new InitializeParamsImpl();
-            initializeParams.setCapabilities(new ClientCapabilitiesImpl());
-            initializeParams.setRootPath("/tmp");
+            InitializeParams initializeParams = new InitializeParams();
+            initializeParams.setCapabilities(new ClientCapabilities());
+            initializeParams.setRootPath("file:///tmp");
             CompletableFuture<InitializeResult> initialized = testLangServerProcess.initialize(initializeParams);
             initialized.get(30, TimeUnit.SECONDS);
+
         } finally {
             testLangServerProcess.exit();
-            testLanguageServerLauncher.getProcess().waitFor();
         }
 
+    }
+
+    @Test
+    public void shouldSendShowMessageRequest()
+                    throws LanguageServerException, InterruptedException, ExecutionException, TimeoutException, IOException {
+        // given a test lang server launcher
+        final TestLanguageServerLauncher testLanguageServerLauncher = new TestLanguageServerLauncher();
+        assertTrue(testLanguageServerLauncher.isAbleToLaunch());
+        LanguageClient client = Mockito.mock(LanguageClient.class);
+        Mockito.when(client.showMessageRequest(Mockito.any())).thenReturn(CompletableFuture.completedFuture(null));
+
+        // when
+        final LanguageServer testLangServer = testLanguageServerLauncher.launch("", client);
+        try {
+            // then
+            assertNotNull(testLangServer);
+
+            TextDocumentItem item = new TextDocumentItem();
+            item.setText("window/showMessageRequest:Error:Apply:the message\n");
+            item.setUri("file:///foo");
+
+            testLangServer.getTextDocumentService().didOpen(new DidOpenTextDocumentParams(item, item.getText()));
+            testLangServer.getTextDocumentService().didSave(new DidSaveTextDocumentParams(new TextDocumentIdentifier("file:///foo")));
+            Mockito.verify(client, Mockito.timeout(5000)).showMessageRequest(Matchers.any());
+        } finally {
+            testLangServer.exit();
+        }
     }
 }

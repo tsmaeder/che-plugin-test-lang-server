@@ -11,17 +11,17 @@
 package org.eclipse.che.plugin.languageserver.test.server.launcher;
 
 import com.google.inject.Singleton;
-import io.typefox.lsapi.services.LanguageServer;
-import io.typefox.lsapi.services.json.JsonBasedLanguageServer;
 import jnr.enxio.channels.NativeSelectorProvider;
 import jnr.unixsocket.UnixServerSocketChannel;
 import jnr.unixsocket.UnixSocketAddress;
 import jnr.unixsocket.UnixSocketChannel;
 import org.eclipse.che.api.languageserver.exception.LanguageServerException;
 import org.eclipse.che.api.languageserver.launcher.LanguageServerLauncherTemplate;
-import org.eclipse.che.api.languageserver.server.dto.DtoServerImpls.LanguageDescriptionDTOImpl;
-import org.eclipse.che.api.languageserver.shared.lsapi.LanguageDescriptionDTO;
 import org.eclipse.che.api.languageserver.shared.model.LanguageDescription;
+import org.eclipse.lsp4j.jsonrpc.Launcher;
+import org.eclipse.lsp4j.services.LanguageClient;
+import org.eclipse.lsp4j.services.LanguageServer;
+import org.jboss.tools.lsp.ext.ExtendedLanguageServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,10 +64,10 @@ public class TestLanguageServerLauncher extends LanguageServerLauncherTemplate {
 	private static final String[] EXTENSIONS = new String[] { "test" };
 	private static final String[] MIME_TYPES = new String[] { "text/x-test" };
 
-	private static final LanguageDescriptionDTO description;
+	private static final LanguageDescription description;
 
 	static {  
-		description = new LanguageDescriptionDTOImpl();
+		description = new LanguageDescription();
 		description.setFileExtensions(asList(EXTENSIONS));
 		description.setLanguageId(LANGUAGE_ID);
 		description.setMimeTypes(Arrays.asList(MIME_TYPES));
@@ -225,9 +225,12 @@ public class TestLanguageServerLauncher extends LanguageServerLauncherTemplate {
 	}
 
 	@Override
-	protected LanguageServer connectToLanguageServer(final Process languageServerProcess) {
-        JsonBasedLanguageServer languageServer = new JsonBasedLanguageServer();
-        languageServer.connect(Channels.newInputStream(this.socketInChannel), Channels.newOutputStream(this.socketOutChannel));
-        return languageServer;
+	protected LanguageServer connectToLanguageServer(final Process languageServerProcess, LanguageClient client) {
+	    
+        Launcher<ExtendedLanguageServer> launcher = Launcher.createLauncher(client, ExtendedLanguageServer.class,
+                                                                    Channels.newInputStream(this.socketInChannel),
+                                                                    Channels.newOutputStream(this.socketOutChannel));
+        launcher.startListening();
+        return launcher.getRemoteProxy();
 	}
 }
