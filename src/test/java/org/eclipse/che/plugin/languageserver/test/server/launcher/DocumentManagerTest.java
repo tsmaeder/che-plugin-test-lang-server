@@ -91,6 +91,7 @@ public class DocumentManagerTest {
             assertEquals("abxycde", testLangServer.getDocument("foo").get(30, TimeUnit.SECONDS));
         } finally {
             testLangServer.exit();
+            testLanguageServerLauncher.getProcess().waitFor(5000, TimeUnit.MILLISECONDS);
         }
 
     }
