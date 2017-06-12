@@ -16,10 +16,10 @@ import org.eclipse.che.api.languageserver.launcher.LanguageServerLauncher;
 import org.eclipse.che.api.languageserver.shared.model.LanguageDescription;
 import org.eclipse.che.inject.DynaModule;
 import org.eclipse.che.plugin.languageserver.test.server.launcher.TestLanguageServerLauncher;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
-import java.util.logging.Logger;
 
 import static java.util.Arrays.asList;
 

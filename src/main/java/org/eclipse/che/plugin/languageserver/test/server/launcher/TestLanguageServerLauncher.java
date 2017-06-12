@@ -17,6 +17,8 @@ import jnr.unixsocket.UnixSocketAddress;
 import jnr.unixsocket.UnixSocketChannel;
 import org.eclipse.che.api.languageserver.exception.LanguageServerException;
 import org.eclipse.che.api.languageserver.launcher.LanguageServerLauncherTemplate;
+import org.eclipse.che.api.languageserver.registry.DocumentFilter;
+import org.eclipse.che.api.languageserver.registry.LanguageServerDescription;
 import org.eclipse.che.plugin.languageserver.test.TestLanguageServerModule;
 import org.eclipse.lsp4j.jsonrpc.Launcher;
 import org.eclipse.lsp4j.services.LanguageClient;
@@ -36,6 +38,7 @@ import java.nio.channels.Selector;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
@@ -57,6 +60,12 @@ public class TestLanguageServerLauncher extends LanguageServerLauncherTemplate {
 
     private static File launcherJar;
 
+
+	//private static final String REGEX= ".*\\.test";
+    private static final String REGEX= ".*";
+
+	private static final LanguageServerDescription description= createServerDescription();
+
     private UnixServerSocketChannel serverSocketInChannel;
     private UnixServerSocketChannel serverSocketOutChannel;
     private UnixSocketChannel       socketInChannel;
@@ -70,8 +79,8 @@ public class TestLanguageServerLauncher extends LanguageServerLauncherTemplate {
     }
 
     @Override
-    public String getLanguageId() {
-        return TestLanguageServerModule.LANGUAGE_ID;
+ 	public LanguageServerDescription getDescription() {
+		return description;
     }
 
     @Override
@@ -214,4 +223,11 @@ public class TestLanguageServerLauncher extends LanguageServerLauncherTemplate {
         launcher.startListening();
         return launcher.getRemoteProxy();
     }
+	
+    private static LanguageServerDescription createServerDescription() {
+        LanguageServerDescription description = new LanguageServerDescription("org.eclipse.che.plugin.languageserver.test", null,
+                        Arrays.asList(new DocumentFilter(TestLanguageServerModule.LANGUAGE_ID, REGEX, null)));
+        return description;
+    }
+
 }
