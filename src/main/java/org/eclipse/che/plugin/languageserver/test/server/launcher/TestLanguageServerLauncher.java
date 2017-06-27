@@ -118,7 +118,7 @@ public class TestLanguageServerLauncher extends LanguageServerLauncherTemplate {
             final File testLanguageServerJarFile = findJarFile();
             // starts the Java process
             final ProcessBuilder processBuilder = new ProcessBuilder(JAVA_EXEC,
-                            "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=1044",
+                            //"-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=1044",
                             "-DSTDIN_PIPE_NAME=" + socketOutFile.getAbsolutePath(), "-DSTDOUT_PIPE_NAME=" + socketInFile.getAbsolutePath(),
                             "-jar", testLanguageServerJarFile.toString(), "debug");
             // specify the working directory to load classes from the other jar
@@ -184,8 +184,8 @@ public class TestLanguageServerLauncher extends LanguageServerLauncherTemplate {
         return null;
     }
 
-    private static File getSocketFile(final String fileName) {
-        return new File(new File(System.getProperty("java.io.tmpdir")), fileName);
+    private static File getSocketFile(final String fileName) throws IOException {
+        return File.createTempFile(fileName, ".io");
     }
 
     /**
