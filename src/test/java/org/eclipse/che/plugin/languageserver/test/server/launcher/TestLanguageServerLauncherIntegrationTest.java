@@ -45,7 +45,7 @@ import static org.junit.Assert.assertTrue;
 public class TestLanguageServerLauncherIntegrationTest {
 
     @Test
-    public void shouldLaunchLanguageServer() throws LanguageServerException {
+    public void shouldLaunchLanguageServer() throws LanguageServerException, InterruptedException {
         // given a test lang server launcher
         final TestLanguageServerLauncher testLanguageServerLauncher = new TestLanguageServerLauncher();
         assertTrue(testLanguageServerLauncher.isAbleToLaunch());
@@ -82,6 +82,7 @@ public class TestLanguageServerLauncherIntegrationTest {
             assertNotNull(testLangServerProcess);
         } finally {
             testLangServerProcess.exit();
+            testLanguageServerLauncher.getProcess().waitFor(5000, TimeUnit.MILLISECONDS);
         }
 
     }
@@ -131,7 +132,8 @@ public class TestLanguageServerLauncherIntegrationTest {
 
         } finally {
             testLangServerProcess.exit();
-        }
+            testLanguageServerLauncher.getProcess().waitFor(5000, TimeUnit.MILLISECONDS);
+       }
 
     }
 
@@ -159,6 +161,7 @@ public class TestLanguageServerLauncherIntegrationTest {
             Mockito.verify(client, Mockito.timeout(5000)).showMessageRequest(Matchers.any());
         } finally {
             testLangServer.exit();
+            testLanguageServerLauncher.getProcess().waitFor(5000, TimeUnit.MILLISECONDS);
         }
     }
 }
